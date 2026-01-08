@@ -297,14 +297,6 @@ Health check endpoint.
 }
 ```
 
-### Rate Limits
-
-| Plan       | Requests/Hour | Requests/Month |
-|------------|---------------|----------------|
-| Free       | 2             | 10             |
-| Pro        | 20            | 100            |
-| Enterprise | 100           | 1000           |
-
 ---
 
 ## Output Examples
