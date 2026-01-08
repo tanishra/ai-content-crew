@@ -1,0 +1,180 @@
+comprehensive_research_task:
+  description: >
+    Conduct comprehensive research on '{topic}' and create a complete research package:
+    
+    1. Research Planning:
+       - Identify 5-7 key subtopics to investigate
+       - Determine priority questions to answer
+    
+    2. Data Collection:
+       - Gather facts, statistics, and expert opinions from authoritative sources
+       - Collect current information and recent developments
+       - Identify emerging trends and future predictions
+    
+    3. Fact Verification:
+       - Cross-reference all major claims with multiple sources
+       - Verify statistics and data accuracy
+       - Rate source credibility
+    
+    4. Organization:
+       - Organize findings by theme/subtopic
+       - Include all source citations
+       - Highlight key insights and trends
+    
+    Work efficiently but thoroughly. Aim for 2000-2500 words of organized research.
+  expected_output: >
+    A comprehensive research document (2000-2500 words) with:
+    - Executive summary of key findings
+    - Organized research by subtopic with facts, statistics, and trends
+    - Future trend analysis with predictions
+    - Full source citations for all major claims
+    - Clear highlight of most important insights
+  agent: research_analyst
+
+strategic_report_task:
+  description: >
+    Transform the research on '{topic}' into a professional 2000-word strategic report.
+    
+    Structure:
+    1. Executive Summary (200 words) - Key takeaways at a glance
+    2. Introduction (150 words) - Context and scope
+    3. Current Landscape (600 words) - Present state with data
+    4. Key Findings & Analysis (700 words) - Main insights organized by theme
+    5. Future Trends & Implications (300 words) - Predictions and recommendations
+    6. Conclusion (50 words) - Final thoughts
+    
+    Style:
+    - Professional yet accessible tone
+    - Clear headings and subheadings
+    - Data points and statistics integrated naturally
+    - Actionable insights highlighted
+    - Proper citations maintained
+    
+    Create a report that's informative, credible, and valuable for decision-makers.
+  expected_output: >
+    A polished 2000-word strategic report on '{topic}' with:
+    - Clear professional structure with all 6 sections
+    - Executive summary highlighting key points
+    - Data-driven analysis with statistics
+    - Future trends and strategic recommendations
+    - Complete source citations
+    - Ready for executive presentation
+  agent: report_writer
+  context:
+    - comprehensive_research_task
+  output_file: "output/strategic_report.md"
+
+seo_blog_creation_task:
+  description: >
+    Based on the report, create an engaging 500-word SEO-optimized blog post on '{topic}'.
+    
+    Content Requirements:
+    - Attention-grabbing headline (include primary keyword)
+    - Compelling opening hook (story, question, or surprising fact)
+    - 3-4 main points with relatable examples
+    - Simple, conversational language (5th-6th grade reading level)
+    - Short paragraphs (2-3 sentences each)
+    - Strong conclusion with clear takeaway
+    
+    SEO Requirements:
+    - Identify 1 primary keyword and 3-5 secondary keywords
+    - Include primary keyword in: headline, first paragraph, one subheading
+    - Natural keyword placement (1-2% density)
+    - Create compelling meta description (150-160 characters)
+    - Suggest URL slug
+    - Add 2-3 internal linking opportunities
+    
+    Engagement Elements:
+    - Quotable moments that readers will want to share
+    - Clear call-to-action at the end
+    - Questions to involve readers
+    - Subheadings for scannability
+    
+    Make it informative, entertaining, and shareable while being SEO-friendly.
+  expected_output: >
+    A complete SEO-optimized blog post package including:
+    
+    1. Blog Post (500 words):
+       - Creative, keyword-rich headline
+       - Engaging content with 3-4 main points
+       - Conversational, accessible writing
+       - Clear structure with subheadings
+       - Strong call-to-action
+    
+    2. SEO Elements:
+       - Primary keyword + 5 secondary keywords identified
+       - Meta description (150-160 chars)
+       - Recommended URL slug
+       - Internal linking suggestions (2-3)
+    
+    3. Engagement Notes:
+       - Quotable lines highlighted
+       - Social sharing hooks identified
+  agent: blog_content_creator
+  context:
+    - strategic_report_task
+  output_file: "output/blog_post_with_seo.md"
+
+final_quality_review_task:
+  description: >
+    Perform comprehensive quality assurance on both the report and blog post about '{topic}'.
+    
+    Review Checklist:
+    
+    1. Grammar & Mechanics:
+       - Fix spelling, punctuation, grammar errors
+       - Ensure consistent tense and voice
+       - Check sentence structure
+    
+    2. Clarity & Flow:
+       - Improve transitions between ideas
+       - Eliminate redundancy and filler
+       - Ensure logical progression
+       - Simplify complex sentences
+    
+    3. Readability & Accessibility:
+       - Check Flesch Reading Ease score (target: 60-70)
+       - Verify heading hierarchy (H1, H2, H3)
+       - Ensure inclusive language
+       - Confirm average sentence length (15-20 words)
+    
+    4. Quality Standards:
+       - Verify all citations are properly formatted
+       - Check for originality (flag any potential plagiarism)
+       - Ensure claims are supported by research
+       - Confirm word counts (Report: 2000, Blog: 500)
+    
+    5. SEO & Engagement (Blog only):
+       - Verify keyword placement looks natural
+       - Check meta description quality
+       - Confirm URL slug is SEO-friendly
+    
+    Provide edited versions of both documents with a summary of improvements made.
+  expected_output: >
+    Final quality-assured content package:
+    
+    1. Final Strategic Report (2000 words):
+       - All errors corrected
+       - Enhanced clarity and flow
+       - Professional polish applied
+       - Citations verified
+    
+    2. Final Blog Post (500 words):
+       - Grammar and style perfected
+       - Readability optimized
+       - SEO elements validated
+       - Engagement maximized
+    
+    3. Quality Assurance Report:
+       - List of major edits made
+       - Readability scores (Flesch, avg sentence length)
+       - Originality confirmation
+       - SEO checklist results
+       - Publishing recommendations
+    
+    All content is polished, professional, and ready for immediate publication.
+  agent: quality_editor
+  context:
+    - strategic_report_task
+    - seo_blog_creation_task
+  output_file: "output/final_content_package.md"
