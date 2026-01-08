@@ -424,7 +424,7 @@ railway up
 ssh -i key.pem ubuntu@your-ip
 
 # Clone and setup
-git clone https://github.com/yourusername/ai-content-crew.git
+git clone https://github.com/tanishra/ai-content-crew.git
 cd ai-content-crew
 pip install -r requirements.txt
 
@@ -480,7 +480,7 @@ tail -f logs/app.json
 ### Getting Help
 
 - 📖 [Documentation](./docs)
-- 🐛 [GitHub Issues](https://github.com/yourusername/ai-content-crew/issues)
+- 🐛 [GitHub Issues](https://github.com/tanishra/ai-content-crew/issues)
 - 📧 Email: support@yourproject.com
 
 ---
