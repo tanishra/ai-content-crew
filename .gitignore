@@ -3,3 +3,4 @@ __pycache__/
 .DS_Store
 .venv
 blogs
+ai_content_crew.db
