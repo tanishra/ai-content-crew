@@ -8,9 +8,6 @@ from sqlalchemy.orm import Session
 
 from research_and_blog_crew.crew import ResearchAndBlogCrew
 from database.models import SessionLocal, User, ContentJob, generate_api_key, init_db
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from utils.logger import setup_logger
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -63,12 +60,10 @@ X-API-Key: acc_your_api_key_here
     },
 )
 
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
 logger = setup_logger("api", "api.log")
 
+# Check if testing
+TESTING = os.getenv("TESTING", "false").lower() == "true"
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -99,6 +94,49 @@ async def verify_api_key(
         raise HTTPException(status_code=403, detail="Invalid API Key")
     
     return user
+
+def check_rate_limit(user: User, db: Session):
+    """
+    Check if user has exceeded hourly rate limit.
+    Rate limits are tier-based and stored in database.
+    """
+    if TESTING:
+        logger.debug("Rate limiting skipped (testing mode)")
+        return  # Skip rate limiting during tests
+    
+    # Get requests from last hour
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    recent_jobs = db.query(ContentJob).filter(
+        ContentJob.user_id == user.id,
+        ContentJob.created_at >= one_hour_ago
+    ).count()
+    
+    # Define rate limits per tier (requests per hour)
+    rate_limits = {
+        "free": 2,
+        "pro": 20,
+        "enterprise": 100
+    }
+    
+    limit = rate_limits.get(user.subscription_tier, 2)
+    
+    if recent_jobs >= limit:
+        logger.warning("Rate limit exceeded", extra={
+            "user_id": user.id,
+            "tier": user.subscription_tier,
+            "recent_jobs": recent_jobs,
+            "limit": limit
+        })
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. You can make {limit} requests per hour on the {user.subscription_tier} plan."
+        )
+    
+    logger.debug("Rate limit check passed", extra={
+        "user_id": user.id,
+        "recent_jobs": recent_jobs,
+        "limit": limit
+    })
 
 # Models
 class ContentRequest(BaseModel):
@@ -183,7 +221,6 @@ async def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
     response_description="Job created successfully",
     tags=["Content Generation"]
 )
-@limiter.limit("10/hour")  # 10 requests per hour for free tier
 async def generate_content(
     request: ContentRequest,
     background_tasks: BackgroundTasks,
@@ -215,12 +252,27 @@ async def generate_content(
         "topic": request.topic
     })
     
-    # Check usage limits
+    # Check hourly rate limit
+    check_rate_limit(user,db)
+
+    # Check monthly usage limits
     if user.usage_count >= user.monthly_limit:
+        logger.warning("Monthly limit exceeded", extra={
+            "user_id": user.id,
+            "usage": user.usage_count,
+            "limit": user.monthly_limit
+        })
         raise HTTPException(
             status_code=429,
             detail=f"Monthly limit reached ({user.monthly_limit} requests). Upgrade your plan."
         )
+    
+    # Validate topic length
+    if len(request.topic) > 200:
+        raise HTTPException(status_code=400, detail="Topic must be 200 characters or less")
+    
+    if not request.topic.strip():
+        raise HTTPException(status_code=400, detail="Topic cannot be empty")
     
     # Create job
     job_id = str(uuid.uuid4())
@@ -239,6 +291,13 @@ async def generate_content(
     user.last_used_at = datetime.utcnow()
     db.commit()
     
+    logger.info("Generation started", extra={
+        "job_id": job_id,
+        "user_id": user.id,
+        "topic": request.topic,
+        "usage": f"{user.usage_count}/{user.monthly_limit}"
+    })
+
     # Run crew in background
     background_tasks.add_task(run_crew, job_id, request.topic, user.id)
     
@@ -280,6 +339,11 @@ async def get_status(
     ).first()
     
     if not job:
+        logger.warning("Job not found", extra={
+            "job_id": job_id,
+            "user_id": user.id
+        })
+        
         raise HTTPException(status_code=404, detail="Job not found")
     
     return {
