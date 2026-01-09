@@ -15,10 +15,14 @@ def setup_logger(name: str, log_file: str = None):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     
+    # Remove any existing handlers to avoid duplicates
+    logger.handlers.clear()
+    
     # Console handler (human-readable)
     console_handler = logging.StreamHandler(sys.stdout)
     console_format = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
     console_handler.setFormatter(console_format)
     logger.addHandler(console_handler)
@@ -28,11 +32,20 @@ def setup_logger(name: str, log_file: str = None):
         Path("logs").mkdir(exist_ok=True)
         file_handler = logging.FileHandler(f"logs/{log_file}")
         
+        # FIX: Use correct field names for JSON formatter
         json_format = jsonlogger.JsonFormatter(
-            '%(timestamp)s %(level)s %(name)s %(message)s'
+            '%(asctime)s %(levelname)s %(name)s %(message)s',
+            rename_fields={
+                'asctime': 'timestamp',
+                'levelname': 'level'
+            },
+            datefmt='%Y-%m-%d %H:%M:%S'
         )
         file_handler.setFormatter(json_format)
         logger.addHandler(file_handler)
+    
+    # Prevent propagation to root logger
+    logger.propagate = False
     
     return logger
 
@@ -40,3 +53,4 @@ def setup_logger(name: str, log_file: str = None):
 if __name__ == "__main__":
     logger = setup_logger("test", "test.log")
     logger.info("Test message", extra={"user_id": 123, "action": "test"})
+    print("Check logs/test.log for JSON output")
