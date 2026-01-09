@@ -2,7 +2,9 @@
 name = "research_and_blog_crew"
 version = "0.1.0"
 description = "research_and_blog_crew using crewAI"
-authors = [{ name = "Your Name", email = "you@example.com" }]
+authors = [
+    { name = "Tanish Rajput", email = "tanishrajput9@gmail.com" }
+]
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "crewai-tools>=0.76.0",
@@ -31,5 +33,18 @@ test = "research_and_blog_crew.main:test"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# ------------------------------
+# Hatchling configuration
+# Required for src/ layout
+# ------------------------------
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["research_and_blog_crew"]
+
+# ------------------------------
+# CrewAI configuration
+# ------------------------------
 [tool.crewai]
 type = "crew"
