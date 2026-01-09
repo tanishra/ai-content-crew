@@ -4,3 +4,6 @@ __pycache__/
 .venv
 blogs
 ai_content_crew.db
+output
+.coverage
+logs
