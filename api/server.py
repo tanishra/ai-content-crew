@@ -5,6 +5,7 @@ from typing import Optional
 import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import text 
 
 from research_and_blog_crew.crew import ResearchAndBlogCrew
 from database.models import SessionLocal, User, ContentJob, generate_api_key, init_db
@@ -68,7 +69,30 @@ TESTING = os.getenv("TESTING", "false").lower() == "true"
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    init_db()
+    """Initialize database on startup"""
+    try:
+        # Initialize database tables
+        init_db()
+        
+        # Test database connection
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        
+        logger.info("API server started successfully", extra={
+            "testing": TESTING,
+            "database": "healthy"
+        })
+    except Exception as e:
+        logger.error("Failed to initialize database", extra={
+            "error": str(e)
+        }, exc_info=True)
+        # Don't crash the server, but log the error
+        print(f"⚠️  Warning: Database initialization failed: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    logger.info("API server shutting down")
 
 # Dependency to get DB session
 def get_db():
@@ -481,28 +505,51 @@ async def health_check(db: Session = Depends(get_db)):
     
     Returns system status and recent performance metrics.
     """
-
+    db_status = "unhealthy"
+    error_detail = None
+    
     try:
-        # Test database connection
-        db.execute("SELECT 1")
+        # Test database connection with a simple query
+        result = db.execute(text("SELECT 1"))
+        result.fetchone()
+        
+        # Try to query the actual tables to ensure they exist
+        db.query(User).first()
+        db.query(ContentJob).first()
+        
         db_status = "healthy"
-    except:
+    except Exception as e:
+        logger.error("Database health check failed", extra={
+            "error": str(e)
+        })
+        error_detail = str(e)
         db_status = "unhealthy"
     
     # Check recent job success rate
-    recent_jobs = db.query(ContentJob).order_by(
-        ContentJob.created_at.desc()
-    ).limit(10).all()
+    recent_success_rate = "0.0%"
+    try:
+        recent_jobs = db.query(ContentJob).order_by(
+            ContentJob.created_at.desc()
+        ).limit(10).all()
+        
+        if recent_jobs:
+            success_rate = sum(1 for j in recent_jobs if j.status == "completed") / len(recent_jobs) * 100
+            recent_success_rate = f"{success_rate:.1f}%"
+    except Exception as e:
+        logger.warning("Could not calculate success rate", extra={"error": str(e)})
     
-    success_rate = sum(1 for j in recent_jobs if j.status == "completed") / len(recent_jobs) * 100 if recent_jobs else 0
-    
-    return {
+    response = {
         "status": "healthy" if db_status == "healthy" else "degraded",
         "database": db_status,
         "timestamp": datetime.utcnow().isoformat(),
-        "recent_success_rate": f"{success_rate:.1f}%",
+        "recent_success_rate": recent_success_rate,
         "version": "1.0.0"
     }
+    
+    if error_detail and not TESTING:
+        response["error"] = error_detail
+    
+    return response
 
 def run_crew(job_id: str, topic: str, user_id: int):
     """Background task to run crew"""
