@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import secrets
+import os
 
 Base = declarative_base()
 
@@ -36,14 +37,31 @@ class ContentJob(Base):
     tokens_used = Column(Integer, nullable=True)
     estimated_cost = Column(Float, nullable=True)  # in USD
 
+# Database initialization - use /app/data in Docker, current dir locally
+DB_DIR = os.getenv("DB_DIR", ".")
+os.makedirs(DB_DIR, exist_ok=True)
+DATABASE_PATH = os.path.join(DB_DIR, "ai_content_crew.db")
+
 # Database initialization
 engine = create_engine('sqlite:///ai_content_crew.db', echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     """Initialize database tables"""
-    Base.metadata.create_all(bind=engine)
-    print("✅ Database initialized successfully")
+    try:
+        Base.metadata.create_all(bind=engine)
+        print(f"✅ Database initialized successfully at: {DATABASE_PATH}")
+        
+        # Verify tables were created
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        print(f"✅ Created tables: {', '.join(tables)}")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Database initialization failed: {e}")
+        raise
 
 def generate_api_key():
     """Generate secure API key"""
