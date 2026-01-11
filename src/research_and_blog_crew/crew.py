@@ -207,7 +207,8 @@ class ResearchAndBlogCrew():
                 memory=True,  # Enable memory for context retention
                 cache=True,   # Cache results to avoid redundant work
                 max_rpm=30,   # Rate limiting for API calls
-                share_crew=False  # Keep crew private
+                share_crew=False,  # Keep crew private
+                output_log_file=True
             )
         except Exception as e:
             logger.error(f"Error assembling crew: {str(e)}")
