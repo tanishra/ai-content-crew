@@ -3,7 +3,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import text 
 
@@ -269,12 +269,6 @@ async def generate_content(
     }
 ```
     """
-
-    logger.info("Generation started", extra={
-        "job_id": job_id,
-        "user_id": user.id,
-        "topic": request.topic
-    })
     
     # Check hourly rate limit
     check_rate_limit(user,db)
@@ -567,6 +561,24 @@ def run_crew(job_id: str, topic: str, user_id: int):
         crew_instance = ResearchAndBlogCrew()
         result = crew_instance.crew().kickoff(inputs={"topic": topic})
 
+        # Actual output content from crew result
+        result_str = str(result)
+
+        # Create output directory if not exists
+        import os
+        os.makedirs("/app/output", exist_ok=True)
+        
+        # Save files manually
+        report_path = f"/app/output/strategic_report_{job_id}.md"
+        blog_path = f"/app/output/blog_post_{job_id}.md"
+
+        # Write the result to both files (crew output is combined)
+        with open(report_path, "w") as f:
+            f.write(result_str)
+        
+        with open(blog_path, "w") as f:
+            f.write(result_str)
+
         # Estimate cost (rough calculation)
         # GPT-4: $0.03 per 1K tokens input, $0.06 per 1K tokens output
         # Average generation uses ~15K tokens total
@@ -590,10 +602,16 @@ def run_crew(job_id: str, topic: str, user_id: int):
             "job_id": job_id,
             "execution_time": execution_time,
             "tokens": estimated_tokens,
-            "cost": f"${estimated_cost:.4f}"
+            "cost": f"${estimated_cost:.4f}",
+            "files_created": [report_path, blog_path]
         })
         
     except Exception as e:
+        logger.error("Crew execution failed", extra={
+            "job_id": job_id,
+            "error": str(e)
+        }, exc_info=True)
+        
         job.status = "failed"
         job.error_message = str(e)
         job.completed_at = datetime.utcnow()
