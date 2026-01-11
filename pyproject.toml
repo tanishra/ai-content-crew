@@ -48,3 +48,12 @@ packages = ["research_and_blog_crew"]
 # ------------------------------
 [tool.crewai]
 type = "crew"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true
