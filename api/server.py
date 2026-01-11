@@ -561,12 +561,27 @@ def run_crew(job_id: str, topic: str, user_id: int):
         crew_instance = ResearchAndBlogCrew()
         result = crew_instance.crew().kickoff(inputs={"topic": topic})
 
-        # Actual output content from crew result
-        result_str = str(result)
-
-        # Create output directory if not exists
-        import os
-        os.makedirs("/app/output", exist_ok=True)
+        # Get individual task outputs
+        report_content = ""
+        blog_content = ""
+        
+        # Extract outputs from completed tasks
+        if hasattr(crew_instance, 'tasks'):
+            for task in crew_instance.tasks:
+                if hasattr(task, 'output') and task.output:
+                    output_str = str(task.output.raw) if hasattr(task.output, 'raw') else str(task.output)
+                    
+                    # Identify which task this is
+                    if 'report' in task.description.lower() or 'strategic' in task.description.lower():
+                        report_content = output_str
+                    elif 'blog' in task.description.lower():
+                        blog_content = output_str
+        
+        # Fallback: use final result if individual outputs not found
+        if not report_content and not blog_content:
+            full_output = str(result)
+            report_content = full_output
+            blog_content = full_output
         
         # Save files manually
         report_path = f"/app/output/strategic_report_{job_id}.md"
@@ -574,10 +589,10 @@ def run_crew(job_id: str, topic: str, user_id: int):
 
         # Write the result to both files (crew output is combined)
         with open(report_path, "w") as f:
-            f.write(result_str)
+            f.write(report_content)
         
         with open(blog_path, "w") as f:
-            f.write(result_str)
+            f.write(blog_content)
 
         # Estimate cost (rough calculation)
         # GPT-4: $0.03 per 1K tokens input, $0.06 per 1K tokens output
