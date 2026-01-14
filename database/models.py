@@ -19,6 +19,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_used_at = Column(DateTime, nullable=True)
+    password_hash = Column(String, nullable=True) 
 
 class ContentJob(Base):
     __tablename__ = "content_jobs"
