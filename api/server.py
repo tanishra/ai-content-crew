@@ -177,6 +177,7 @@ class ContentRequest(BaseModel):
 
 class UserSignupRequest(BaseModel):
     email: EmailStr
+    password: str
 
 class JobStatus(BaseModel):
     job_id: str
@@ -186,6 +187,11 @@ class JobStatus(BaseModel):
     completed_at: Optional[str] = None
     result: Optional[dict] = None
     error: Optional[str] = None
+
+# LoginRequest model
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 # Routes
 @app.post(
