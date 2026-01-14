@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import text 
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from research_and_blog_crew.crew import ResearchAndBlogCrew
 from database.models import SessionLocal, User, ContentJob, generate_api_key, init_db
@@ -24,6 +26,12 @@ sentry_sdk.init(
     enable_logs=True,
 
 )
+
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI(
     title="AI Content Crew API",
@@ -484,6 +492,101 @@ async def get_costs(db: Session = Depends(get_db)):
         "total_cost": f"${total_cost:.2f}",
         "avg_cost_per_job": f"${avg_cost:.4f}",
         "estimated_monthly": f"${total_cost * 30:.2f}"  # If this is daily rate
+    }
+
+# Add password hashing functions
+def verify_password(plain_password, hashed_password):
+    """Verify password"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    """Hash password"""
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict):
+    """Create JWT token"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# Update signup endpoint to hash password
+@app.post("/signup", tags=["Authentication"])
+async def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
+    """Create a new user account and generate API key."""
+    logger.info("Signup attempt", extra={"email": request.email})
+    
+    # Check if user exists
+    existing_user = db.query(User).filter(User.email == request.email).first()
+    if existing_user:
+        logger.warning("Signup failed - duplicate email", extra={"email": request.email})
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create new user with hashed password
+    api_key = generate_api_key()
+    password_hash = get_password_hash(request.password)
+    
+    new_user = User(
+        email=request.email,
+        password_hash=password_hash,
+        api_key=api_key,
+        subscription_tier="free",
+        monthly_limit=10
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": request.email})
+    
+    logger.info("Signup successful", extra={
+        "email": request.email,
+        "user_id": new_user.id
+    })
+    
+    return {
+        "message": "Signup successful",
+        "email": request.email,
+        "api_key": api_key,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "subscription_tier": "free",
+        "monthly_limit": 10
+    }
+
+# Add login endpoint
+@app.post("/login", tags=["Authentication"])
+async def login(request: LoginRequest, db: Session = Depends(get_db)):
+    """Login with email and password"""
+    logger.info("Login attempt", extra={"email": request.email})
+    
+    # Find user
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user or not user.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Verify password
+    if not verify_password(request.password, user.password_hash):
+        logger.warning("Login failed - wrong password", extra={"email": request.email})
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user.email})
+    
+    logger.info("Login successful", extra={"email": request.email, "user_id": user.id})
+    
+    return {
+        "message": "Login successful",
+        "email": user.email,
+        "api_key": user.api_key,
+        "access_token": access_token,
+        "token_type": "bearer",
+        "subscription_tier": user.subscription_tier,
+        "usage_count": user.usage_count,
+        "monthly_limit": user.monthly_limit
     }
 
 @app.get(
